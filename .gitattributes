@@ -1,0 +1,11 @@
+# Force LF for all shell scripts
+*.sh text eol=lf
+
+# (Optional but recommended)
+*.bash text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# Keep Windows scripts Windows-friendly
+*.bat text eol=crlf
+*.ps1 text eol=crlf
