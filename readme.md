@@ -2,12 +2,16 @@
 
 This guide walks you through setting up student accounts on a new Ubuntu server and preparing each student’s web space.
 
+This has been tested with *DigitalOcean Droplets* and *AWS Lightsail Instances*.
+
+NOTE: Lightsail uses a *ubuntu* user instead of a *root* user, so if you are using Lightsail, replace *root* with *ubuntu* in any of the instructions.
+
 ---
 
 ## Prerequisites
 
 - A CSV export of your class roster from the gradebook.  
-- SSH access to a clean Ubuntu installation (tested with **Ubuntu 24.04**) on a server (e.g., [DigitalOcean](https://www.digitalocean.com/)).  
+- SSH access to a clean Ubuntu installation (tested with **Ubuntu 24.04**) on a server.  
 - Python installed locally to convert CSV → JSON.  
 - Terminal or PowerShell access.
 
