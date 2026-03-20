@@ -1,49 +1,132 @@
-Deployment Instructions:
+# Class Server Deployment Instructions
 
-1. Download your class roster using export csv from the gradebook. Create a new folder called student_csv and put the csv file into there.
+This guide walks you through setting up student accounts on a new Ubuntu server and preparing each student’s web space.
 
-2. run the python script: csv_to_json.py to change your CSV into a json called students.json
+---
 
-3. Ensure you have ssh access to a new install of ubuntu (I used 24.04) on a server (I used digital ocean)
+## Prerequisites
 
-4. Navigate to this folder in a terminal/powershell
+- A CSV export of your class roster from the gradebook.  
+- SSH access to a clean Ubuntu installation (tested with **Ubuntu 24.04**) on a server (e.g., [DigitalOcean](https://www.digitalocean.com/)).  
+- Python installed locally to convert CSV → JSON.  
+- Terminal or PowerShell access.
 
-5. Run the following commands:
+---
 
-scp .\initial_setup.sh root@144.126.216.174:~
-scp .\class_setup.sh root@144.126.216.174:~
-scp .\students.json root@144.126.216.174:~
+## Step 1 — Prepare Student Data
 
-Replace YOUR_IP with the ip address of your server computer.
+1. Create a folder in your project called `student_csv`.  
+2. Place your exported CSV file into the `student_csv` folder.  
+3. Convert the CSV into JSON by running the Python script:
 
-6. SSH into your machine as root user from terminal/powershell
+```bash
+python csv_to_json.py
+```
 
-7. verify the files exist:
-    ls -l ~
-You should see the three files.
+This will generate a file named `students.json`.
 
-8. Make the files executable:
+---
+
+## Step 2 — Transfer Files to the Server
+
+From your local machine, navigate to the folder containing the scripts and JSON file, then run the following commands:
+
+```bash
+scp ./initial_setup.sh root@YOUR_IP:~
+scp ./class_setup.sh root@YOUR_IP:~
+scp ./students.json root@YOUR_IP:~
+```
+
+> Replace `YOUR_IP` with the IP address of your server.
+
+---
+
+## Step 3 — SSH Into the Server
+
+Connect to your server as the root user:
+
+```bash
+ssh root@YOUR_IP
+```
+
+Verify the files were successfully uploaded:
+
+```bash
+ls -l ~
+```
+
+You should see:
+
+- `initial_setup.sh`
+- `class_setup.sh`
+- `students.json`
+
+---
+
+## Step 4 — Prepare Scripts for Execution
+
+Make both shell scripts executable:
+
+```bash
 chmod +x initial_setup.sh class_setup.sh
+```
 
-9. Run the initial setup:
+---
+
+## Step 5 — Run Initial Setup
+
+Run the initial setup script:
+
+```bash
 sudo ./initial_setup.sh
+```
 
-You may see a Configuring openssh-server prompt. 
-Choose *keep the local version currently installed*
+> You may see a prompt for **Configuring openssh-server**.  
+> Choose: **Keep the local version currently installed**.
 
-10. Run the class setup:
+---
+
+## Step 6 — Create Student Accounts
+
+Run the class setup script:
+
+```bash
 sudo ./class_setup.sh
+```
 
-This will create users on the server machine for each student from the student list using their oregon state username as their username on your server.
+This will:
 
-11. student_credentials.csv should be created
+- Create user accounts for each student using their Oregon State username.  
+- Generate a `student_credentials.csv` file containing their login info.  
+- Place database credentials in each student’s `db_info.txt`.  
+- Set default passwords to `changeme` and force students to change them on first login.
 
-You should need this file, but you can scp it from your server to your computer if you need the passwords.
-The student directories will also have their database credentials in a db_info.txt
-By default all student passwords will be changeme and they will be forced to change their passwords when they log in
+---
 
-Students can log in by using ssh username@ipaddress (they don't need SSH keys, they will use password authentication)
+## Step 7 — Accessing Student Accounts
 
-From there, they'll be able to ssh in, change their password, and they'll also be able to sftp in (using Filezilla or similar) and transfer files to their public_html folder.
+Students can:
 
-Their website is viewable at YOUR_IP/~username
+- Log in via SSH:
+
+```bash
+ssh username@YOUR_IP
+```
+
+- Change their password upon first login.  
+- Use SFTP (e.g., FileZilla) to transfer files to their `public_html` folder.
+
+Each student’s website will be available at:
+
+```bash
+http://YOUR_IP/~username
+```
+
+> If needed, you can `scp` the `student_credentials.csv` back to your local machine for reference.
+
+---
+
+## Notes
+
+- SSH keys are **not required**; password authentication is sufficient.  
+- Ensure that your firewall allows HTTP (port 80) if students need to access their websites.
