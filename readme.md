@@ -134,3 +134,17 @@ http://YOUR_IP/~username
 
 - SSH keys are **not required**; password authentication is sufficient.  
 - Ensure that your firewall allows HTTP (port 80) if students need to access their websites.
+
+---
+
+## Reset Student Password
+
+To reset a student's password from sudo user:
+
+`passwd whiteda3`
+
+You will be prompted to set the password
+
+`chage -d 0 username`
+
+This will force the user to change their password when they log in.
