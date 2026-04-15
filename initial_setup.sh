@@ -22,7 +22,8 @@ sudo apt install -y \
     php-mysql \
     jq \
     unzip \
-    curl
+    curl \
+    ufw
 
 # -------------------------------
 # 3. Enable Apache modules
@@ -31,6 +32,7 @@ echo "🔧 Enabling Apache modules..."
 
 sudo a2enmod userdir
 sudo a2enmod rewrite
+sudo a2enmod include
 
 # -------------------------------
 # 4. Configure UserDir (~username)
@@ -46,52 +48,52 @@ sudo tee $USERDIR_CONF > /dev/null <<EOF
 
     <Directory /home/*/public_html>
         AllowOverride All
-        Options Indexes FollowSymLinks
+        Options Indexes FollowSymLinks IncludesNOEXEC
         Require all granted
+
+        AddType text/html .shtml
+        AddOutputFilter INCLUDES .shtml
     </Directory>
 </IfModule>
 EOF
 
 # -------------------------------
-# 5. Adjust Apache main config (ensure access)
+# 5. Adjust Apache main config (avoid duplicates)
 # -------------------------------
 echo "🔐 Ensuring Apache can access home directories..."
 
 APACHE_CONF="/etc/apache2/apache2.conf"
 
-if ! grep -q "/home/*/public_html" $APACHE_CONF; then
+if ! grep -q "IncludesNOEXEC" $APACHE_CONF; then
     sudo tee -a $APACHE_CONF > /dev/null <<EOF
 
 <Directory /home/*/public_html>
     AllowOverride All
-    Options Indexes FollowSymLinks
+    Options Indexes FollowSymLinks IncludesNOEXEC
     Require all granted
+
+    AddType text/html .shtml
+    AddOutputFilter INCLUDES .shtml
 </Directory>
 EOF
 fi
 
 # -------------------------------
-# 6. Secure PHP for classroom use and enable PHP for user directories
+# 6. Configure PHP
 # -------------------------------
 echo "🛡️ Configuring PHP for classroom use..."
 
-# Detect loaded php.ini
 PHP_INI=$(php -i | grep "Loaded Configuration File" | awk '{print $5}')
 
-# Basic security / classroom settings
 sudo sed -i "s/^display_errors = .*/display_errors = On/" "$PHP_INI"
 sudo sed -i "s/^max_execution_time = .*/max_execution_time = 5/" "$PHP_INI"
 sudo sed -i "s/^memory_limit = .*/memory_limit = 64M/" "$PHP_INI"
 sudo sed -i "s/^disable_functions =.*/disable_functions = exec,passthru,shell_exec,system,proc_open,popen/" "$PHP_INI"
 
-# -------------------------------
-# Enable PHP in user directories (mod_userdir)
-# -------------------------------
-# Detect PHP module version for Apache
+# Enable PHP in user directories
 PHP_VER=$(php -r 'echo PHP_MAJOR_VERSION.".".PHP_MINOR_VERSION;')
-
-# Comment out "php_admin_flag engine Off" in mod_userdir PHP config
 PHP_MOD_CONF="/etc/apache2/mods-enabled/php${PHP_VER}.conf"
+
 if [ -f "$PHP_MOD_CONF" ]; then
     sudo sed -i 's/^\s*php_admin_flag engine Off/#php_admin_flag engine Off/' "$PHP_MOD_CONF"
     echo "✅ Enabled PHP execution in ~/public_html for all users"
@@ -113,7 +115,6 @@ echo "🗄️ Configuring MySQL..."
 sudo systemctl enable mysql
 sudo systemctl start mysql
 
-# Secure root account (no password, unix_socket auth)
 sudo mysql <<EOF
 DELETE FROM mysql.user WHERE User='';
 DROP DATABASE IF EXISTS test;
@@ -121,15 +122,12 @@ FLUSH PRIVILEGES;
 EOF
 
 # -------------------------------
-# 9. Firewall (optional but recommended)
+# 9. Firewall
 # -------------------------------
 echo "🔥 Configuring firewall..."
 
-sudo apt install -y ufw
-
 sudo ufw allow OpenSSH
 sudo ufw allow 'Apache Full'
-
 sudo ufw --force enable
 
 # -------------------------------
@@ -155,11 +153,10 @@ EOF
 sudo chmod 755 /etc/skel/public_html
 
 # -------------------------------
-# 11. Ensure SSH allows password login
+# 11. Configure SSH (safe rerun)
 # -------------------------------
 echo "🔑 Configuring SSH to allow password authentication..."
 
-# Main config
 sudo sed -i "s/^#PasswordAuthentication.*/PasswordAuthentication yes/" /etc/ssh/sshd_config
 sudo sed -i "s/^PasswordAuthentication.*/PasswordAuthentication yes/" /etc/ssh/sshd_config
 sudo sed -i "s/^#ChallengeResponseAuthentication.*/ChallengeResponseAuthentication yes/" /etc/ssh/sshd_config
@@ -167,15 +164,13 @@ sudo sed -i "s/^ChallengeResponseAuthentication.*/ChallengeResponseAuthenticatio
 sudo sed -i "s/^#UsePAM.*/UsePAM yes/" /etc/ssh/sshd_config
 sudo sed -i "s/^UsePAM.*/UsePAM yes/" /etc/ssh/sshd_config
 
-# Disable cloud-init overrides
+# Disable cloud-init overrides (only once)
 if [ -d /etc/ssh/sshd_config.d ]; then
     for f in /etc/ssh/sshd_config.d/*.conf; do
-        echo "📄 Renaming override file: $f"
-        sudo mv "$f" "$f.bak"
+        [ -f "$f" ] && [ ! -f "$f.bak" ] && sudo mv "$f" "$f.bak"
     done
 fi
 
-# Restart SSH
 sudo systemctl restart ssh
 sudo systemctl enable ssh
 
